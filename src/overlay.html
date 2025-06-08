@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Circle Search Overlay</title>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: transparent !important;
+            user-select: none;
+            -webkit-user-select: none;
+            width: 100vw;
+            height: 100vh;
+        }
+        #overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.3);
+            cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M12 2L12 22M2 12L22 12"/></svg>') 12 12, auto;
+        }
+        #selection {
+            position: absolute;
+            border: 2px solid white;
+            background: rgba(255, 255, 255, 0.1);
+            pointer-events: none;
+            display: none;
+        }
+        #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="overlay"></div>
+    <div id="selection"></div>
+    <canvas id="canvas"></canvas>
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const overlay = document.getElementById('overlay');
+        const selection = document.getElementById('selection');
+        
+        // Set canvas size to match window
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        let isDrawing = false;
+        let lastX = 0;
+        let lastY = 0;
+        let points = [];
+
+        function clearCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        // Prevent default drag behavior
+        document.addEventListener('dragstart', (e) => e.preventDefault());
+        document.addEventListener('selectstart', (e) => e.preventDefault());
+
+        overlay.addEventListener('mousedown', (e) => {
+            isDrawing = true;
+            points = [];
+            lastX = e.clientX;
+            lastY = e.clientY;
+            points.push({ x: lastX, y: lastY });
+            clearCanvas();
+            window.electron.send('start-capture', { x: lastX, y: lastY });
+        });
+
+        overlay.addEventListener('mousemove', (e) => {
+            if (!isDrawing) return;
+            
+            const currentX = e.clientX;
+            const currentY = e.clientY;
+
+            // Draw the line
+            ctx.beginPath();
+            ctx.moveTo(lastX, lastY);
+            ctx.lineTo(currentX, currentY);
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 6;
+            ctx.stroke();
+
+            // Update last position
+            lastX = currentX;
+            lastY = currentY;
+            points.push({ x: currentX, y: currentY });
+        });
+
+        overlay.addEventListener('mouseup', (e) => {
+            if (!isDrawing) return;
+            isDrawing = false;
+            
+            // Calculate bounds of the drawing
+            const xPoints = points.map(p => p.x);
+            const yPoints = points.map(p => p.y);
+            const minX = Math.min(...xPoints);
+            const maxX = Math.max(...xPoints);
+            const minY = Math.min(...yPoints);
+            const maxY = Math.max(...yPoints);
+
+            // Clear the canvas
+            clearCanvas();
+
+            // Send the bounds to main process
+            window.electron.send('end-capture', {
+                x: minX,
+                y: minY,
+                width: maxX - minX,
+                height: maxY - minY
+            });
+        });
+
+        // Handle escape key to cancel
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                console.log('Escape pressed');
+                isDrawing = false;
+                clearCanvas();
+                window.electron.send('cancel-capture');
+            }
+        });
+
+        // Log when the overlay is loaded
+        console.log('Overlay loaded');
+    </script>
+</body>
+</html> 

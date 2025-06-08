@@ -1,10 +1,46 @@
 {
+    "productName": "Whirl",
     "appId": "com.paul.learn",
-    "files": ["dist-electron", "dist-react"],
-    "icon": "./desktopIcon.png",
-    "extraResources": ["dist-electron/preload.cjs"],
+    "files": [
+        "dist-electron",
+        "dist-react",
+        "src/overlay.html"
+    ],
+    "icon": "./assets/whirl.png",
+    "extraResources": [
+        {
+            "from": "src/overlay.html",
+            "to": "overlay.html"
+        },
+        {
+            "from": "assets",
+            "to": "assets"
+        },
+        {
+            "from": "screenshots",
+            "to": "screenshots"
+        }
+    ],
     "mac": {
-        "target": "dmg"
+        "target": ["dmg", "zip"],
+        "icon": "./assets/whirl.png",
+        "category": "public.app-category.utilities",
+        "darkModeSupport": true,
+        "hardenedRuntime": false,
+        "gatekeeperAssess": false,
+        "entitlements": "build/entitlements.mac.plist",
+        "entitlementsInherit": "build/entitlements.mac.plist",
+        "identity": null,
+        "notarize": false,
+        "type": "development",
+        "artifactName": "${productName}-${version}-${arch}.${ext}",
+        "extraFiles": [
+            {
+                "from": "node_modules",
+                "to": "node_modules",
+                "filter": ["**/*"]
+            }
+        ]
     },
     "linux": {
         "target": "AppImage",
@@ -12,5 +48,12 @@
     },
     "win": {
         "target": ["portable", "msi"]
-    }
+    },
+    "asar": true,
+    "asarUnpack": [
+        "dist-electron/preload.js",
+        "node_modules/**/*.node"
+    ],
+    "npmRebuild": true,
+    "buildDependenciesFromSource": true
 }
