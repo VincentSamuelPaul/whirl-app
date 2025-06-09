@@ -34,13 +34,7 @@
         "notarize": false,
         "type": "development",
         "artifactName": "${productName}-${version}-${arch}.${ext}",
-        "extraFiles": [
-            {
-                "from": "node_modules",
-                "to": "node_modules",
-                "filter": ["**/*"]
-            }
-        ]
+        "compression": "maximum"
     },
     "linux": {
         "target": "AppImage",
@@ -51,9 +45,10 @@
     },
     "asar": true,
     "asarUnpack": [
-        "dist-electron/preload.js",
-        "node_modules/**/*.node"
+        "dist-electron/preload.js"
     ],
-    "npmRebuild": true,
-    "buildDependenciesFromSource": true
+    "npmRebuild": false,
+    "buildDependenciesFromSource": false,
+    "removePackageScripts": true,
+    "removePackageKeywords": true
 }

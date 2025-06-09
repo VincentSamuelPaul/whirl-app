@@ -7,6 +7,7 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 echo -e "${GREEN}Starting Whirl build process...${NC}"
+echo -e "${YELLOW}Building in current directory: $(pwd)${NC}"
 
 # Function to install Homebrew if not present
 install_homebrew() {
@@ -65,79 +66,68 @@ install_node() {
     fi
 }
 
-# Check and install git if needed
-if ! command -v git &> /dev/null; then
-    echo -e "${YELLOW}Git not found. Installing git...${NC}"
-    install_homebrew
-    brew install git
+# Check if we're already in the repository
+if [ -d ".git" ]; then
+    echo -e "${YELLOW}Already in Whirl repository, skipping clone...${NC}"
+else
+    # Check if git is installed
+    if ! command -v git &> /dev/null; then
+        echo -e "${YELLOW}Git not found. Installing git...${NC}"
+        install_homebrew
+        brew install git
+        if [ $? -ne 0 ]; then
+            echo -e "${RED}Error: Failed to install git${NC}"
+            exit 1
+        fi
+    fi
+
+    # Clone the repository directly in current directory
+    echo -e "${YELLOW}Cloning Whirl repository...${NC}"
+    git clone https://github.com/VincentSamuelPaul/whirl-app.git .
     if [ $? -ne 0 ]; then
-        echo -e "${RED}Error: Failed to install git${NC}"
+        echo -e "${RED}Error: Failed to clone repository${NC}"
         exit 1
     fi
 fi
-
-# Check and install Node.js/npm if needed
-if ! command -v node &> /dev/null || ! command -v npm &> /dev/null; then
-    echo -e "${YELLOW}Node.js/npm not found. Installing...${NC}"
-    install_node
-fi
-
-# Create a temporary directory
-TEMP_DIR=$(mktemp -d)
-echo -e "${YELLOW}Created temporary directory: ${TEMP_DIR}${NC}"
-
-# Clone the repository
-echo -e "${YELLOW}Cloning Whirl repository...${NC}"
-git clone https://github.com/VincentSamuelPaul/whirl-frontend.git "${TEMP_DIR}/whirl"
-if [ $? -ne 0 ]; then
-    echo -e "${RED}Error: Failed to clone repository${NC}"
-    rm -rf "${TEMP_DIR}"
-    exit 1
-fi
-
-# Navigate to the app directory
-cd "${TEMP_DIR}/whirl/app"
 
 # Install dependencies
 echo -e "${YELLOW}Installing dependencies...${NC}"
 npm install
 if [ $? -ne 0 ]; then
     echo -e "${RED}Error: Failed to install dependencies${NC}"
-    rm -rf "${TEMP_DIR}"
     exit 1
 fi
 
 # Build the app
-echo -e "${YELLOW}Building Whirl...${NC}"
+echo -e "${YELLOW}Building Whirl (optimized build)...${NC}"
+# Build React app and Electron main process with optimized settings
 npm run dist:mac
 if [ $? -ne 0 ]; then
     echo -e "${RED}Error: Failed to build the app${NC}"
-    rm -rf "${TEMP_DIR}"
     exit 1
 fi
 
-# Move the built app to Applications
-echo -e "${YELLOW}Moving Whirl to Applications folder...${NC}"
-if [ -d "/Applications/Whirl.app" ]; then
-    echo -e "${YELLOW}Removing existing Whirl installation...${NC}"
-    rm -rf "/Applications/Whirl.app"
-fi
-
-# Copy the new app
-cp -R "${TEMP_DIR}/whirl/app/dist/mac-arm64/Whirl.app" "/Applications/"
-if [ $? -ne 0 ]; then
-    echo -e "${RED}Error: Failed to move app to Applications folder${NC}"
-    echo -e "${YELLOW}You can find the app at: ${TEMP_DIR}/whirl/app/dist/mac-arm64/Whirl.app${NC}"
+# Verify the app was built
+if [ -d "dist/mac-arm64/Whirl.app" ]; then
+    echo -e "${GREEN}Successfully built Whirl.app${NC}"
+    echo -e "${YELLOW}App size: $(du -sh dist/mac-arm64/Whirl.app | cut -f1)${NC}"
+    ls -la "dist/mac-arm64/Whirl.app"
+else
+    echo -e "${RED}Error: Whirl.app not found in dist/mac-arm64/Whirl.app${NC}"
+    echo -e "${YELLOW}Checking alternative locations...${NC}"
+    find "dist" -name "Whirl.app" -type d
+    echo -e "${YELLOW}Current directory contents:${NC}"
+    ls -la
     exit 1
 fi
 
-# Clean up
-echo -e "${YELLOW}Cleaning up...${NC}"
-rm -rf "${TEMP_DIR}"
-
-echo -e "${GREEN}Whirl has been successfully built and installed!${NC}"
+echo -e "${GREEN}Whirl has been successfully built!${NC}"
+echo -e "${YELLOW}The app is located at: $(pwd)/dist/mac-arm64/Whirl.app${NC}"
+echo -e "${YELLOW}Build artifacts:${NC}"
+echo -e "  - App: $(du -sh dist/mac-arm64/Whirl.app | cut -f1)"
+echo -e "  - DMG: $(ls -lh dist/*.dmg 2>/dev/null | awk '{print $5}' || echo 'Not found')"
+echo -e "  - ZIP: $(ls -lh dist/*.zip 2>/dev/null | awk '{print $5}' || echo 'Not found')"
 echo -e "${YELLOW}Note: Since this is an unsigned app, you'll need to:${NC}"
-echo -e "1. Open System Preferences > Security & Privacy"
-echo -e "2. Click 'Open Anyway' for Whirl"
-echo -e "3. Or right-click Whirl.app and select 'Open'"
+echo -e "1. Right-click Whirl.app and select 'Open'"
+echo -e "2. Click 'Open' in the security dialog"
 echo -e "\n${GREEN}Enjoy using Whirl!${NC}" 
