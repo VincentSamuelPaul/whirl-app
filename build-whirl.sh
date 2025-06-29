@@ -81,7 +81,13 @@ else
         fi
     fi
 
-    # Clone the repository directly in current directory
+    # Create a new directory for the build
+    BUILD_DIR="whirl-build-$(date +%s)"
+    echo -e "${YELLOW}Creating build directory: ${BUILD_DIR}${NC}"
+    mkdir -p "${BUILD_DIR}"
+    cd "${BUILD_DIR}"
+
+    # Clone the repository into the new directory
     echo -e "${YELLOW}Cloning Whirl repository...${NC}"
     git clone https://github.com/VincentSamuelPaul/whirl-app.git .
     if [ $? -ne 0 ]; then
